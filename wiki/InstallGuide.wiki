@@ -1,0 +1,12 @@
+Simply add it to your project, right click it and add it to build path.
+Now you can use JSoundSystem.getSound( File file ) to get a JSound.
+
+{{{
+	JSound mySound = JSoundSystem.getSound( new File("mysound.wav" );
+	mySound.play();
+}}}
+That's it!
+
+
+JSoundSystem is licensed under the GPL v3.0 and implements some SPI libraries 
+from JavaZoom to decode OGG and MP3 sound files.
