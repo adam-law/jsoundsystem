@@ -1,6 +1,10 @@
 package JSoundSystem;
 
 import java.awt.geom.Point2D;
+import java.io.File;
+import java.io.IOException;
+
+import javax.sound.sampled.UnsupportedAudioFileException;
 
 /**
  * An extension of the JSound class that simulates a 3D sound effect. 3D sounds have a
@@ -21,6 +25,20 @@ public class JSound3D extends JSound {
 	JSound3D(JSoundThread thread ) {
 		super(thread);
 		thread.setSourcePosition( new Point2D.Float() );
+	}
+	
+	/**
+	 * A constructor for the JSound3D object. This is same as calling JSoundSystem.create3DSound( File soundFile )
+	 * @param soundFile The file you want to play as an audio file.
+	 * @throws UnsupportedAudioFileException If the API cannot convert the file into an audio stream
+	 * @throws IOException If the file could not be read
+	 */
+	public JSound3D( File soundFile ) throws UnsupportedAudioFileException, IOException{
+		super( new JSoundThread( soundFile.getName(), soundFile, false ) );
+		
+		//Make sure the file is actually a sound
+		if( !JSoundSystem.soundIsSupported(soundFile) ) 
+			throw new UnsupportedAudioFileException("Audio file not supported: " + soundFile.getAbsolutePath());
 	}
 	
 	/**
