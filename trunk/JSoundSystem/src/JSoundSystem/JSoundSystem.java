@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package JSoundSystem;
 
+import java.awt.geom.Point2D;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -36,17 +37,55 @@ import javax.sound.sampled.UnsupportedAudioFileException;
  *
  */
 public abstract class JSoundSystem {
-	
-	//Global settings
-	protected static int channelsPlaying = 0;
-	private static int maxChannels = 32;
 	public final static String VERSION = "1.00";
 	
+	//Sound channels
+	protected static int channelsPlaying = 0;
+	private static int maxChannels = 32;
+	
+	//3D sound effects
+	private static Point2D.Float listenerPosition = new Point2D.Float();
+	protected static float maxDistance = 800;
+		
 	/**
 	 * Gets the number of channels in use
 	 */
 	public static int getSoundsPlaying(){
 		return channelsPlaying;
+	}
+	
+	/**
+	 * This is a very important method in the JSoundSystem. With this method you can create JSound objects
+	 * from any specified File. This function will fail if the specified sound is not supported or if
+	 * the file does not exist.
+	 * @param soundFile A File object pointing to the audio file you want to use
+	 * @return A JSound object ready to be played
+	 * @throws UnsupportedAudioFileException If the audio format is not supported by the JSoundSystem
+	 * @throws IOException If the audio file could not be read
+	 * @see JSound
+	 */
+	public static JSound createSound( File soundFile ) throws UnsupportedAudioFileException, IOException {
+		//Make sure the file is actually a sound
+		if( !soundIsSupported(soundFile) ) throw new UnsupportedAudioFileException("Audio file not supported: " + soundFile.getAbsolutePath());
+			
+		//Create a new thread for this sound to be played within
+		JSoundThread thread = new JSoundThread( soundFile.getName(), soundFile, false );
+
+		return new JSound(thread);
+	}
+	
+	/**
+	 * This is a very important method in the JSoundSystem. With this method you can create JSound objects
+	 * from any specified String. This function will fail if the specified sound is not supported or if
+	 * the file does not exist.
+	 * @param soundFile A String with the file path of the audio file you want to use
+	 * @return A JSound object ready to be played
+	 * @throws UnsupportedAudioFileException If the audio format is not supported by the JSoundSystem
+	 * @throws IOException If the audio file could not be read
+	 * @see JSound
+	 */
+	public static JSound createSound( String soundFile ) throws UnsupportedAudioFileException, IOException{
+		return createSound( new File(soundFile) );
 	}
 	
 	/**
@@ -75,40 +114,6 @@ public abstract class JSoundSystem {
 	 */
 	public static boolean hasFreeChannels(){
 		return channelsPlaying <= maxChannels;
-	}
-	
-	/**
-	 * This is a very important method in the JSoundSystem. With this method you can create JSound objects
-	 * from any specified File. This function will fail if the specified sound is not supported or if
-	 * the file does not exist.
-	 * @param soundFile A File object pointing to the audio file you want to use
-	 * @return A JSound object ready to be played
-	 * @throws UnsupportedAudioFileException If the audio format is not supported by the JSoundSystem
-	 * @throws IOException If the audio file could not be read
-	 * @see JSound
-	 */
-	public static JSound createSound( File soundFile ) throws UnsupportedAudioFileException, IOException {
-		//Make sure the file is actually a sound
-		if( !soundIsSupported(soundFile) ) throw new UnsupportedAudioFileException("Audio file not supported: " + soundFile.getAbsolutePath());
-			
-		//Create a new thread for this sound to be played within
-		JSoundThread thread = new JSoundThread( soundFile.getName(), soundFile, 1.00f, 0, false );
-
-		return new JSound(thread);
-	}
-	
-	/**
-	 * This is a very important method in the JSoundSystem. With this method you can create JSound objects
-	 * from any specified String. This function will fail if the specified sound is not supported or if
-	 * the file does not exist.
-	 * @param soundFile A String with the file path of the audio file you want to use
-	 * @return A JSound object ready to be played
-	 * @throws UnsupportedAudioFileException If the audio format is not supported by the JSoundSystem
-	 * @throws IOException If the audio file could not be read
-	 * @see JSound
-	 */
-	public static JSound createSound( String soundFile ) throws UnsupportedAudioFileException, IOException{
-		return createSound( new File(soundFile) );
 	}
 	
 	/**
@@ -180,4 +185,61 @@ public abstract class JSoundSystem {
 		}
 		return true;
 	}
+
+	/**********************************************************************************************
+	 * 3D sound simulation code beyond here
+	 *********************************************************************************************/
+	
+	/**
+	 * Works like the createSound( File soundFile ) except that it will return a JSound3D object. A JSound3D
+	 * will automatically simulate 3D positional audio for you. You need to set the sound source, listener source
+	 * and maximum sound distance for this to properly work.
+	 * @param soundFile
+	 * @return A JSound3D object with default source at position (0, 0)
+	 * @throws UnsupportedAudioFileException If the audio format is not supported by the JSoundSystem
+	 * @throws IOException If the audio file could not be read
+	 * @see JSound3D
+	 */
+	public static JSound create3DSound( File soundFile ) throws UnsupportedAudioFileException, IOException {
+		//Make sure the file is actually a sound
+		if( !soundIsSupported(soundFile) ) throw new UnsupportedAudioFileException("Audio file not supported: " + soundFile.getAbsolutePath());
+
+		//Create a new thread for this sound to be played within
+		JSoundThread thread = new JSoundThread( soundFile.getName(), soundFile, true );
+
+		return new JSound3D(thread);
+	}
+	
+	/**
+	 * This sets or changes the position of the listener. This is only used by JSound3D
+	 * who use this to simulate 3D positional sounds. The default position is (0, 0)
+	 * @param listenerPosition A 2 dimensional x y floating point coordinate
+	 * @see JSound3D
+	 */
+	public void setListenerPosition ( Point2D.Float listenerPosition ) {
+		JSoundSystem.listenerPosition = listenerPosition;
+	}
+	
+	/**
+	 * This sets the maximum distance from where sounds can be heard using 3D sound simulation
+	 * The default value is 800. The distance cannot be set below 1 or an IllegalArgumentException
+	 * will be thrown.
+	 * @param distance
+	 * @see JSound3D
+	 * @exception IllegalArgumentException If the distance is set to 1 or less.
+	 */
+	public static void setMaxDistance( float distance ){
+		if( distance <= 1 ) throw new IllegalArgumentException("Distance cannot be less than 1");
+		maxDistance = distance;
+	}
+	
+	/**
+	 * This returns the current position of the listener. The default position is (0, 0)
+	 * @return listenerPosition
+	 * @see JSound3D
+	 */
+	public static Point2D.Float getListenerPosition(){
+		return listenerPosition;
+	}
+
 }

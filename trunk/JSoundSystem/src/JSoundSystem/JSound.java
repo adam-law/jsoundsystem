@@ -25,8 +25,10 @@ package JSoundSystem;
  *
  */
 public class JSound {
+	/**
+	 * This points to the actual sound where the sound is played in a different thread
+	 */
 	protected JSoundThread soundThread;
-	protected boolean oggFile = false;
 
 	/**
 	 * Hidden constructor only used by the SoundSystem
@@ -34,7 +36,7 @@ public class JSound {
 	JSound( JSoundThread thread ){
 		soundThread = thread;
 	}
-	
+		
 	/**
 	 * This method starts playing a sound that is either stopped or paused.
 	 * A sound that hasn't begun playing is stopped. This function will do
@@ -107,5 +109,13 @@ public class JSound {
 	 */
 	public void setPanning( float panning ) {
 		soundThread.setPanning( panning );
+	}
+	
+	/**
+	 * Disposes of this sound and frees all resources is uses. The JSound object cannot be used anymore 
+	 * after this is done.
+	 */
+	public void dispose(){
+		soundThread.dispose();
 	}
 }

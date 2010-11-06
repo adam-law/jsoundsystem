@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package JSoundSystem;
 
+import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 
@@ -31,15 +32,24 @@ import javax.sound.sampled.UnsupportedAudioFileException;
 
 
 class JSoundThread extends Thread {
+
+	private final float DEFAULT_SAMPLE_RATE;
+
+	private File audioFile;
+	protected SourceDataLine audioChannel;
+	
 	private boolean looping, paused, stopped;
 	private boolean killThread;
-	private File audioFile;
+	
 	private float volume;
 	private float panning;
 	private float speed;
-	private SourceDataLine audioChannel;
-	private final float DEFAULT_SAMPLE_RATE;
 	
+	//3D sound simulation
+	private boolean simulate3DEffect;
+	private Point2D.Float source;
+	private float lastVolume;
+
 	//Effect mixer modifiers. They are used in a bitmap so each much be a power of two
 	private static final int MIX_VOLUME =  1 << 0;
 	private static final int MIX_PANNING = 1 << 1;
@@ -50,34 +60,35 @@ class JSoundThread extends Thread {
 	 * @throws IOException 
 	 * @throws UnsupportedAudioFileException 
 	 */
-	JSoundThread( String name, File file, float volume, float panning, boolean looping ) throws UnsupportedAudioFileException, IOException {
+	JSoundThread( String name, File file, boolean simulate3DSound ) throws UnsupportedAudioFileException, IOException {
 		super(name);
 		setPriority( Thread.MIN_PRIORITY );		//Sounds have low priority
 		setDaemon(true);						//And run independently
 
 		this.audioFile = file;
-		this.volume = volume;
-		this.panning = panning;
-		this.looping = looping;
-		this.speed = 1.00f;
 		DEFAULT_SAMPLE_RATE = AudioSystem.getAudioFileFormat( audioFile ).getFormat().getSampleRate();
+		
+		//Set default values
+		volume = 1.00f;
+		speed = 1.00f;
+		panning = 0.00f;
 	}
 
-	public void setLooped( boolean looping ){
+	protected void setLooped( boolean looping ){
 		this.looping = looping;
 	}
 
-	public void setPanning( float panning ){
+	protected void setPanning( float panning ){
 		this.panning = panning;
 		mixSoundEffects( audioChannel, MIX_PANNING );
 	}
 
-	public void setVolume( float volume ){
+	protected void setVolume( float volume ){
 		this.volume = volume;
 		mixSoundEffects( audioChannel, MIX_VOLUME );
 	}
 
-	public void setSpeed( float speed ){
+	protected void setSpeed( float speed ){
 		this.speed = speed;
 		mixSoundEffects( audioChannel, MIX_SPEED );
 	}
@@ -123,13 +134,14 @@ class JSoundThread extends Thread {
 					while ( !stopped && (len = audioStream.read(audioBytes) ) != -1 ) {
 						//Pause until we are told to continue
 						if( paused ) sleepThread();
+						
+						if( simulate3DEffect ) update3DSound();
 
 						audioChannel.write(audioBytes, 0, len);					
 					}
 
 					//Finish the rest of the data
-					if( !stopped ) audioChannel.drain();		//play rest of the data
-//					else		   audioChannel.flush();		//discard rest of the data
+					if( !stopped ) audioChannel.drain();
 
 					//Release resources
 					audioChannel.stop();
@@ -179,7 +191,7 @@ class JSoundThread extends Thread {
 	/**
 	 * Begins playing the sound or resumes if it was paused
 	 */
-	public void play(){
+	protected void play(){
 		if( killThread ) return;
 		stopped = false;
 
@@ -193,12 +205,12 @@ class JSoundThread extends Thread {
 		resumeThread();		
 	}
 
-	public void pause() {
+	protected void pause() {
 		paused = true;
 		if( audioChannel != null ) audioChannel.stop();
 	}
 
-	public void dispose(){
+	protected void dispose(){
 		stopped = true;
 		killThread = true;
 	}
@@ -208,7 +220,7 @@ class JSoundThread extends Thread {
 	 * @param line Which audio line to update
 	 * @param effects A bitmask with the effects to update
 	 */
-	protected void mixSoundEffects(Line line, int effects ) {
+	private void mixSoundEffects(Line line, int effects ) {
 		
 		//No need to mix something that isn't playing
 		if( audioChannel == null ) return;
@@ -237,11 +249,11 @@ class JSoundThread extends Thread {
 		}
 	}
 
-	public boolean isPlaying() {
+	protected boolean isPlaying() {
 		return !paused && !stopped;
 	}
 
-	public void stopPlaying(){
+	protected void stopPlaying(){
 		resumeThread();
 		stopped = true;
 		
@@ -251,5 +263,25 @@ class JSoundThread extends Thread {
 		}
 	}
 
+	private void update3DSound() {
+		Point2D.Float listenerPosition = JSoundSystem.getListenerPosition();
+		float distance = (float) listenerPosition.distance(source);
+		
+        //Calculate how loud the sound is
+		float newVolume = (JSoundSystem.maxDistance - distance) / JSoundSystem.maxDistance;
+	    if (newVolume <= 0) newVolume = 0;
 
+        //Calculate if the sound is left or right oriented
+        float newPanning = (2.00f/JSoundSystem.maxDistance) * -(listenerPosition.x - source.x);
+        
+        //Now actually update the effects
+        setVolume(newVolume + lastVolume / 2);
+        setPanning( newPanning );
+        lastVolume = newVolume;
+	}
+	
+	protected void setSourcePosition( Point2D.Float pos ){
+		source = pos;
+	}
+	
 }
