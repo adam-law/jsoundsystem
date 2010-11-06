@@ -216,7 +216,7 @@ public abstract class JSoundSystem {
 	 * @param listenerPosition A 2 dimensional x y floating point coordinate
 	 * @see JSound3D
 	 */
-	public void setListenerPosition ( Point2D.Float listenerPosition ) {
+	public static void setListenerPosition ( Point2D.Float listenerPosition ) {
 		JSoundSystem.listenerPosition = listenerPosition;
 	}
 	
