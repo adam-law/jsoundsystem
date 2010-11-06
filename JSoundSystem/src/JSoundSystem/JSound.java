@@ -18,6 +18,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package JSoundSystem;
 
+import java.io.File;
+import java.io.IOException;
+
+import javax.sound.sampled.UnsupportedAudioFileException;
+
 /**
  * A sound container class to make using sound effects very easy. To construct a 
  * new JSound simply call createSound() from the static SoundSystem class.
@@ -28,13 +33,43 @@ public class JSound {
 	/**
 	 * This points to the actual sound where the sound is played in a different thread
 	 */
-	protected JSoundThread soundThread;
+	protected final JSoundThread soundThread;
 
 	/**
 	 * Hidden constructor only used by the SoundSystem
 	 */
 	JSound( JSoundThread thread ){
 		soundThread = thread;
+	}
+	
+	/**
+	 * A constructor for the JSound object. This is same as calling JSoundSystem.createSound( File soundFile )
+	 * @param soundFile The file you want to play as an audio file.
+	 * @throws UnsupportedAudioFileException If the API cannot convert the file into an audio stream
+	 * @throws IOException If the file could not be read
+	 */
+	public JSound( File soundFile ) throws UnsupportedAudioFileException, IOException{
+		//Make sure the file is actually a sound
+		if( !JSoundSystem.soundIsSupported(soundFile) ) 
+			throw new UnsupportedAudioFileException("Audio file not supported: " + soundFile.getAbsolutePath());
+
+		soundThread = new JSoundThread( soundFile.getName(), soundFile, false );
+	}
+	
+	/**
+	 * A constructor for the JSound object. This is same as calling JSoundSystem.createSound( String soundFile )
+	 * @param soundFile The path to the file you want to use as an audio file.
+	 * @throws UnsupportedAudioFileException If the API cannot convert the file into an audio stream
+	 * @throws IOException If the file could not be read
+	 */
+	public JSound( String soundFile ) throws UnsupportedAudioFileException, IOException{
+		File file = new File(soundFile);
+		
+		//Make sure the file is actually a sound
+		if( !JSoundSystem.soundIsSupported(file) ) 
+			throw new UnsupportedAudioFileException("Audio file not supported: " + file.getAbsolutePath());
+
+		soundThread = new JSoundThread( file.getName(), file, false );
 	}
 		
 	/**
