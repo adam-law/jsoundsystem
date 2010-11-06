@@ -82,4 +82,31 @@ public class JSound {
 	public String toString(){
 		return soundThread.getName();
 	}
+	
+	/**
+	 * Changes the volume of this sound. The number indicates how loud the sound
+	 * will be played (For example 0.10f is 10%, while 1.00f means 100% and 2.25f means 225%)
+	 * @param volume A number between 0.00f and 5.00f where 1.00f is default 
+	 */
+	public void setVolume( float volume ){
+		soundThread.setVolume( volume );
+	}
+	
+	/**
+	 * Changes how fast this sound is played by changing it's sample playback rate.
+	 * @param speed A non-negative float that describes how fast to play. 
+	 * 1.00f means 100% speed (default)
+	 */
+	public void setSpeed( float speed ){
+		soundThread.setSpeed( speed );
+	}
+	
+	/**
+	 * Sets if this sound is to be played on the left or right speaker.
+	 * @param panning A number between -1.00f (left) and 1.00f (right). 0.00f is the default (center)
+	 */
+	public void setPanning( float panning ) {
+		System.out.println("panning is " + panning);
+		soundThread.setPanning( panning );
+	}
 }
