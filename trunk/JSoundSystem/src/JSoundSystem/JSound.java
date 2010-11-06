@@ -79,8 +79,8 @@ public class JSound {
 	 */
 	public void play() {
 
-		//No free channels
-		if( !JSoundSystem.hasFreeChannels() ) return;
+		//No free channels to start a new sound
+		if( !JSoundSystem.hasFreeChannels() && !soundThread.isPaused() ) return;
 
 		soundThread.play();
 	}
