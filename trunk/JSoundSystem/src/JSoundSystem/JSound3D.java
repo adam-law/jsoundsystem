@@ -35,6 +35,7 @@ public class JSound3D extends JSound {
 	 */
 	public JSound3D( File soundFile ) throws UnsupportedAudioFileException, IOException{
 		super( new JSoundThread( soundFile.getName(), soundFile, false ) );
+		soundThread.setSourcePosition( new Point2D.Float() );
 		
 		//Make sure the file is actually a sound
 		if( !JSoundSystem.soundIsSupported(soundFile) ) 
