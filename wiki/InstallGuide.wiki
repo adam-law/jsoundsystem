@@ -8,5 +8,12 @@ Now you can use JSoundSystem.getSound( File file ) to get a JSound.
 That's it!
 
 
+JSoundSystem currently supports the following audio formats:
+  * WAV
+  * MP3
+  * OGG
+  * FLAC
+  * AIFF
+
 JSoundSystem is licensed under the GPL v3.0 and implements some SPI libraries 
 from JavaZoom to decode OGG and MP3 sound files.
