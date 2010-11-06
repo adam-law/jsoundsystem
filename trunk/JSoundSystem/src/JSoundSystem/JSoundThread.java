@@ -40,9 +40,10 @@ class JSoundThread extends Thread {
 	private SourceDataLine audioChannel;
 	private final float DEFAULT_SAMPLE_RATE;
 	
-	private static final int MIX_VOLUME = 1;
-	private static final int MIX_PANNING = 2;
-	private static final int MIX_SPEED = 3;
+	//Effect mixer modifiers. They are used in a bitmap so each much be a power of two
+	private static final int MIX_VOLUME =  1 << 0;
+	private static final int MIX_PANNING = 1 << 1;
+	private static final int MIX_SPEED =   1 << 2;
 
 	/**
 	 * Constructs a new SoundThread, should only be called by the SoundSystem
@@ -128,7 +129,7 @@ class JSoundThread extends Thread {
 
 					//Finish the rest of the data
 					if( !stopped ) audioChannel.drain();		//play rest of the data
-					else		   audioChannel.flush();		//discard rest of the data
+//					else		   audioChannel.flush();		//discard rest of the data
 
 					//Release resources
 					audioChannel.stop();
@@ -170,6 +171,8 @@ class JSoundThread extends Thread {
 		synchronized (this) {
 			this.notifyAll();	//Wake up!
 			paused = false;
+
+			if( audioChannel != null ) audioChannel.start();
 		}
 	}
 
@@ -192,6 +195,7 @@ class JSoundThread extends Thread {
 
 	public void pause() {
 		paused = true;
+		if( audioChannel != null ) audioChannel.stop();
 	}
 
 	public void dispose(){
@@ -215,9 +219,6 @@ class JSoundThread extends Thread {
 			float sampleRate = DEFAULT_SAMPLE_RATE * speed;
 			sampleRate = Math.max(gainControl.getMinimum(), Math.min(sampleRate, gainControl.getMaximum()));
 			gainControl.setValue(sampleRate);
-			System.out.println("Speed is: " + sampleRate);
-			System.out.println("Minimum: " + gainControl.getMinimum() );
-			System.out.println("Maximum: " + gainControl.getMaximum() );
 		}
 		
 		//Adjust sound balance
@@ -243,6 +244,11 @@ class JSoundThread extends Thread {
 	public void stopPlaying(){
 		resumeThread();
 		stopped = true;
+		
+		if( audioChannel != null ){
+			audioChannel.stop();
+			audioChannel.flush();
+		}
 	}
 
 

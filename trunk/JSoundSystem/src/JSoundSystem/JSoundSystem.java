@@ -77,6 +77,16 @@ public abstract class JSoundSystem {
 		return channelsPlaying <= maxChannels;
 	}
 	
+	/**
+	 * This is a very important method in the JSoundSystem. With this method you can create JSound objects
+	 * from any specified File. This function will fail if the specified sound is not supported or if
+	 * the file does not exist.
+	 * @param soundFile A File object pointing to the audio file you want to use
+	 * @return A JSound object ready to be played
+	 * @throws UnsupportedAudioFileException If the audio format is not supported by the JSoundSystem
+	 * @throws IOException If the audio file could not be read
+	 * @see JSound
+	 */
 	public static JSound createSound( File soundFile ) throws UnsupportedAudioFileException, IOException {
 		//Make sure the file is actually a sound
 		if( !soundIsSupported(soundFile) ) throw new UnsupportedAudioFileException("Audio file not supported: " + soundFile.getAbsolutePath());
@@ -85,6 +95,20 @@ public abstract class JSoundSystem {
 		JSoundThread thread = new JSoundThread( soundFile.getName(), soundFile, 1.00f, 0, false );
 
 		return new JSound(thread);
+	}
+	
+	/**
+	 * This is a very important method in the JSoundSystem. With this method you can create JSound objects
+	 * from any specified String. This function will fail if the specified sound is not supported or if
+	 * the file does not exist.
+	 * @param soundFile A String with the file path of the audio file you want to use
+	 * @return A JSound object ready to be played
+	 * @throws UnsupportedAudioFileException If the audio format is not supported by the JSoundSystem
+	 * @throws IOException If the audio file could not be read
+	 * @see JSound
+	 */
+	public static JSound createSound( String soundFile ) throws UnsupportedAudioFileException, IOException{
+		return createSound( new File(soundFile) );
 	}
 	
 	/**
