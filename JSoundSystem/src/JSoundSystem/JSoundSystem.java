@@ -241,5 +241,13 @@ public abstract class JSoundSystem {
 	public static Point2D.Float getListenerPosition(){
 		return listenerPosition;
 	}
+	
+	/**
+	 * Returns the current max hearing distance. Default is 800.
+	 * @return
+	 */
+	public static float getMaxDistance(){
+		return maxDistance;
+	}
 
 }

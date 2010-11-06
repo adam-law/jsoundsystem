@@ -27,6 +27,7 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.DataLine;
 import javax.sound.sampled.FloatControl;
 import javax.sound.sampled.Line;
+import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
 import javax.sound.sampled.UnsupportedAudioFileException;
 
@@ -67,6 +68,7 @@ class JSoundThread extends Thread {
 
 		this.audioFile = file;
 		DEFAULT_SAMPLE_RATE = AudioSystem.getAudioFileFormat( audioFile ).getFormat().getSampleRate();
+		simulate3DEffect = simulate3DSound;
 		
 		//Set default values
 		volume = 1.00f;
@@ -104,16 +106,18 @@ class JSoundThread extends Thread {
 			//Keep data ready until we are disposed of
 			while( !killThread ){
 				
-				//Try to open a new AudioLine to the sound
-				AudioInputStream audioStream = JSoundSystem.getAudioStream(audioFile);
-				DataLine.Info info = new DataLine.Info(SourceDataLine.class, audioStream.getFormat(), ((int) audioStream.getFrameLength() * audioStream.getFormat().getFrameSize()));
-				audioChannel = (SourceDataLine) AudioSystem.getLine(info);
-				audioChannel.open( audioStream.getFormat() );
-				
 				//This might be do once or in infinity, depending on the loop variable
 				do{
+					//Try to open a new AudioLine to the sound, this is so that the stream position is reset
+					//because not all sound streams support mark() and reset()
+					AudioInputStream audioStream = JSoundSystem.getAudioStream(audioFile);
+					DataLine.Info info = new DataLine.Info(SourceDataLine.class, audioStream.getFormat(), ((int) audioStream.getFrameLength() * audioStream.getFormat().getFrameSize()));
+					audioChannel = (SourceDataLine) AudioSystem.getLine(info);
+					audioChannel.open( audioStream.getFormat() );
+					
+					//begin playing
 					JSoundSystem.channelsPlaying++;
-					audioChannel.start();		//begin playing
+					audioChannel.start();		
 
 					//Apply various sound effects
 					mixSoundEffects( audioChannel, MIX_PANNING | MIX_VOLUME | MIX_SPEED );
@@ -147,18 +151,21 @@ class JSoundThread extends Thread {
 					audioChannel.stop();
 					audioChannel.close();
 					audioChannel = null;
+					JSoundSystem.channelsPlaying--;
 					audioStream.close();
 				}
 				while( looping && !stopped );
 
 				//Pause until further notice
-				JSoundSystem.channelsPlaying--;
 				sleepThread();
 			} 
-		}
-		catch (Exception e)  {
+		} catch(LineUnavailableException e){
+			System.err.println("Could not play sound ("+ getName() +"): Audio Drivers doesnt support more than " + JSoundSystem.channelsPlaying + "sound channels.");
+		} catch (Exception e)  {
 			System.err.println("Error playing sound ("+ getName() +"): " + e);
+			e.printStackTrace();
 		}
+		
 		//This thread should be killed now
 	}
 
@@ -283,5 +290,8 @@ class JSoundThread extends Thread {
 	protected void setSourcePosition( Point2D.Float pos ){
 		source = pos;
 	}
-	
+
+	public boolean isPaused() {
+		return paused;
+	}
 }
