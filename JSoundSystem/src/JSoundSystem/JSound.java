@@ -106,7 +106,6 @@ public class JSound {
 	 * @param panning A number between -1.00f (left) and 1.00f (right). 0.00f is the default (center)
 	 */
 	public void setPanning( float panning ) {
-		System.out.println("panning is " + panning);
 		soundThread.setPanning( panning );
 	}
 }
