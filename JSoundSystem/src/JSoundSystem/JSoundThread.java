@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package JSoundSystem;
 
 import java.io.File;
+import java.io.IOException;
 
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
@@ -26,6 +27,7 @@ import javax.sound.sampled.DataLine;
 import javax.sound.sampled.FloatControl;
 import javax.sound.sampled.Line;
 import javax.sound.sampled.SourceDataLine;
+import javax.sound.sampled.UnsupportedAudioFileException;
 
 
 class JSoundThread extends Thread {
@@ -34,11 +36,20 @@ class JSoundThread extends Thread {
 	private File audioFile;
 	private float volume;
 	private float panning;
+	private float speed;
+	private SourceDataLine audioChannel;
+	private final float DEFAULT_SAMPLE_RATE;
+	
+	private static final int MIX_VOLUME = 1;
+	private static final int MIX_PANNING = 2;
+	private static final int MIX_SPEED = 3;
 
 	/**
 	 * Constructs a new SoundThread, should only be called by the SoundSystem
+	 * @throws IOException 
+	 * @throws UnsupportedAudioFileException 
 	 */
-	JSoundThread( String name, File file, float volume, float panning, boolean looping ) {
+	JSoundThread( String name, File file, float volume, float panning, boolean looping ) throws UnsupportedAudioFileException, IOException {
 		super(name);
 		setPriority( Thread.MIN_PRIORITY );		//Sounds have low priority
 		setDaemon(true);						//And run independently
@@ -47,6 +58,8 @@ class JSoundThread extends Thread {
 		this.volume = volume;
 		this.panning = panning;
 		this.looping = looping;
+		this.speed = 1.00f;
+		DEFAULT_SAMPLE_RATE = AudioSystem.getAudioFileFormat( audioFile ).getFormat().getSampleRate();
 	}
 
 	public void setLooped( boolean looping ){
@@ -55,10 +68,17 @@ class JSoundThread extends Thread {
 
 	public void setPanning( float panning ){
 		this.panning = panning;
+		mixSoundEffects( audioChannel, MIX_PANNING );
 	}
 
 	public void setVolume( float volume ){
 		this.volume = volume;
+		mixSoundEffects( audioChannel, MIX_VOLUME );
+	}
+
+	public void setSpeed( float speed ){
+		this.speed = speed;
+		mixSoundEffects( audioChannel, MIX_SPEED );
 	}
 
 	/**
@@ -71,20 +91,20 @@ class JSoundThread extends Thread {
 
 			//Keep data ready until we are disposed of
 			while( !killThread ){
-
+				
 				//Try to open a new AudioLine to the sound
 				AudioInputStream audioStream = JSoundSystem.getAudioStream(audioFile);
 				DataLine.Info info = new DataLine.Info(SourceDataLine.class, audioStream.getFormat(), ((int) audioStream.getFrameLength() * audioStream.getFormat().getFrameSize()));
-				SourceDataLine audioChannel = (SourceDataLine) AudioSystem.getLine(info);
+				audioChannel = (SourceDataLine) AudioSystem.getLine(info);
 				audioChannel.open( audioStream.getFormat() );
-
+				
 				//This might be do once or in infinity, depending on the loop variable
 				do{
 					JSoundSystem.channelsPlaying++;
 					audioChannel.start();		//begin playing
 
 					//Apply various sound effects
-					mixSoundEffects( audioChannel, volume, panning );
+					mixSoundEffects( audioChannel, MIX_PANNING | MIX_VOLUME | MIX_SPEED );
 
 					//This actually plays the sound
 					int len = 0;					
@@ -113,6 +133,7 @@ class JSoundThread extends Thread {
 					//Release resources
 					audioChannel.stop();
 					audioChannel.close();
+					audioChannel = null;
 					audioStream.close();
 				}
 				while( looping && !stopped );
@@ -177,25 +198,37 @@ class JSoundThread extends Thread {
 		stopped = true;
 		killThread = true;
 	}
-
+	
 	/**
-	 * JJ> This adds sound mixer effects like volume and sound balance to a audio line
-	 * @param line Which audio line to adjust
+	 * JJ> This updates sound mixer effects like volume and sound balance to an active audio channel
+	 * @param line Which audio line to update
+	 * @param effects A bitmask with the effects to update
 	 */
-	protected void mixSoundEffects(Line line, float volume, float panning) {
-
-		//Clip them to some valid values
-		panning = Math.max(-1, Math.min(1, panning));
-		volume = Math.max(0, Math.min(1, volume));
-
+	protected void mixSoundEffects(Line line, int effects ) {
+		
+		//No need to mix something that isn't playing
+		if( audioChannel == null ) return;
+					
+		//Adjust sound speed
+		if( (effects & MIX_SPEED) != 0 && line.isControlSupported(FloatControl.Type.SAMPLE_RATE) ) {
+			FloatControl gainControl = (FloatControl)line.getControl(FloatControl.Type.SAMPLE_RATE);
+			float sampleRate = DEFAULT_SAMPLE_RATE * speed;
+			sampleRate = Math.max(gainControl.getMinimum(), Math.min(sampleRate, gainControl.getMaximum()));
+			gainControl.setValue(sampleRate);
+			System.out.println("Speed is: " + sampleRate);
+			System.out.println("Minimum: " + gainControl.getMinimum() );
+			System.out.println("Maximum: " + gainControl.getMaximum() );
+		}
+		
 		//Adjust sound balance
-		if( panning != 0 && line.isControlSupported(FloatControl.Type.PAN) ) {
+		if( (effects & MIX_PANNING) != 0 && line.isControlSupported(FloatControl.Type.PAN) ) {
 			FloatControl gainControl = (FloatControl)line.getControl(FloatControl.Type.PAN);
+			panning = Math.max(gainControl.getMinimum(), Math.min(panning, gainControl.getMaximum()));
 			gainControl.setValue(panning);
 		}
 
 		//Set sound volume
-		if(line.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
+		if( (effects & MIX_VOLUME) != 0 && line.isControlSupported(FloatControl.Type.MASTER_GAIN) ) {
 			FloatControl gainControl = (FloatControl)line.getControl(FloatControl.Type.MASTER_GAIN);	
 			float gain = (float)(Math.log(volume)/Math.log(10.0f)*20.0f);
 			gain = Math.max(gainControl.getMinimum(), Math.min(gain, gainControl.getMaximum()));
