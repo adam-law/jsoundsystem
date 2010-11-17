@@ -14,13 +14,13 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
-************************************************************************/
+ ************************************************************************/
 
 package com.jsoundsystem;
 
 import java.awt.geom.Point2D;
 import java.io.BufferedInputStream;
-import java.io.DataInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -39,22 +39,22 @@ import javax.sound.sampled.UnsupportedAudioFileException;
  */
 public abstract class JSoundSystem {
 	public final static String VERSION = "1.00";
-	
+
 	//Sound channels
 	protected static int channelsPlaying = 0;
 	private static int maxChannels = 32;
-	
+
 	//3D sound effects
 	private static Point2D.Float listenerPosition = new Point2D.Float();
 	protected static float maxDistance = 800;
-		
+
 	/**
 	 * Gets the number of channels in use
 	 */
 	public static int getSoundsPlaying(){
 		return channelsPlaying;
 	}
-	
+
 	/**
 	 * This is a very important method in the JSoundSystem. With this method you can create JSound objects
 	 * from any specified File. This function will fail if the specified sound is not supported or if
@@ -71,7 +71,7 @@ public abstract class JSoundSystem {
 
 		return new JSound(createSoundThread(soundFile, false));
 	}
-	
+
 	/**
 	 * This is a very important method in the JSoundSystem. With this method you can create JSound objects
 	 * from any specified String. This function will fail if the specified sound is not supported or if
@@ -85,7 +85,7 @@ public abstract class JSoundSystem {
 	public static JSound createSound( String soundFile ) throws UnsupportedAudioFileException, IOException{
 		return createSound( new File(soundFile) );
 	}
-	
+
 	/**
 	 * This function sets the amount of sound channels that can be used at the same time.
 	 * Sound channels define the number of sounds that can be played at the same time.
@@ -94,11 +94,11 @@ public abstract class JSoundSystem {
 	 * @throws IllegalArgumentException if amount is negative or less than the number of channels in use
 	 */
 	public static void setMaxChannels( int amount ){
-		
+
 		//No negative numbers
 		if( amount < 0 ) 
 			throw new IllegalArgumentException("Cannot set number of channels to negative.");
-		
+
 		//Dont close channels that are in use
 		if( amount < channelsPlaying ) 
 			throw new IllegalArgumentException("Cannot set channels to " + amount + " because " + channelsPlaying + " is already in use.");
@@ -106,15 +106,15 @@ public abstract class JSoundSystem {
 		//All ok
 		maxChannels = amount;
 	}
-	
+
 	/**
 	 * Returns true if there is at least one free channel
 	 */
 	public static boolean hasFreeChannels(){
 		return channelsPlaying <= maxChannels;
 	}
-		
-	
+
+
 	/**
 	 * This function decodes and loads sound data into memory stored in a JSoundThread ready to be played
 	 * @param file
@@ -124,7 +124,7 @@ public abstract class JSoundSystem {
 	 * @throws IOException
 	 */
 	static JSoundThread createSoundThread( File file, boolean simulate3DSound ) throws UnsupportedAudioFileException, IOException {
-		
+
 		//Make sure the file is actually a sound first
 		if( !JSoundSystem.soundIsSupported(file) ) 
 			throw new UnsupportedAudioFileException("Audio file not supported: " + file.getAbsolutePath());
@@ -133,33 +133,33 @@ public abstract class JSoundSystem {
 		BufferedInputStream in = new BufferedInputStream( new FileInputStream(file) );
 		AudioInputStream rawstream = AudioSystem.getAudioInputStream(in);
 		AudioFormat decodedFormat = rawstream.getFormat();
-        
+
 		String fileName = file.getName().toLowerCase();
-		
+
 		//Decode it if it is in OGG Vorbis format
 		if( fileName.endsWith(".ogg") ) {
-	        decodedFormat = new AudioFormat(
-                AudioFormat.Encoding.PCM_SIGNED,
-                decodedFormat.getSampleRate(),
-                16,
-                2,
-                decodedFormat.getChannels() * 2,
-                decodedFormat.getSampleRate(),
-                false);
+			decodedFormat = new AudioFormat(
+					AudioFormat.Encoding.PCM_SIGNED,
+					decodedFormat.getSampleRate(),
+					16,
+					2,
+					decodedFormat.getChannels() * 2,
+					decodedFormat.getSampleRate(),
+					false);
 		}
-		
+
 		//Decode it if it is in MP3 format
 		else if( fileName.endsWith(".mp3") ) {
-	        decodedFormat = new AudioFormat(
-                AudioFormat.Encoding.PCM_SIGNED,
-                decodedFormat.getSampleRate(),
-                16,
-                decodedFormat.getChannels(),
-                decodedFormat.getChannels() * 2,
-                decodedFormat.getSampleRate(),
-                false);
+			decodedFormat = new AudioFormat(
+					AudioFormat.Encoding.PCM_SIGNED,
+					decodedFormat.getSampleRate(),
+					16,
+					decodedFormat.getChannels(),
+					decodedFormat.getChannels() * 2,
+					decodedFormat.getSampleRate(),
+					false);
 		}
-		
+
 		//Convert sound from Mono to Stereo so that we can adjust panning
 		/*else if(decodedFormat.getChannels() == 1 )
 		{
@@ -172,23 +172,25 @@ public abstract class JSoundSystem {
                 decodedFormat.getFrameRate(),
                 decodedFormat.isBigEndian());			
 		}*/
-		
-        //Decode the sound by using the underlying SPI with the specified format
-		AudioInputStream audioStream = AudioSystem.getAudioInputStream(decodedFormat, rawstream);
-		
-		int length = (int)audioStream.getFrameLength() * decodedFormat.getFrameSize();
-		if(length < 0) throw new IOException("Could not do audio file because of negative array size");
-		
-        // read the entire stream and load it into memory
-		byte[] samples = new byte[length];
-        DataInputStream is = new DataInputStream(audioStream);
-        is.readFully(samples);
-        is.close();
 
-        //All done!
-        return new JSoundThread( file.getName(), samples, audioStream.getFormat(), simulate3DSound );
+		//Decode the sound by using the underlying SPI with the specified format
+		AudioInputStream audioStream = AudioSystem.getAudioInputStream(decodedFormat, rawstream);
+
+		// copy the AudioInputStream to a byte array which we load into memory
+		ByteArrayOutputStream bos = new ByteArrayOutputStream();
+		byte[] data = new byte[4096];
+		int tempBytesRead = 0;
+		int byteCounter = 0;
+		while ((tempBytesRead = audioStream.read(data, 0, data.length)) != -1) {
+			bos.write(data, 0, tempBytesRead);
+			byteCounter += tempBytesRead;
+		}
+		bos.close();
+
+		//All done!
+		return new JSoundThread( file.getName(), bos.toByteArray(), audioStream.getFormat(), simulate3DSound );
 	}
-	
+
 	/**
 	 * Finds out if the specified File is supported as an AudioInputStream and if it can be used
 	 * as a JSound. Returns true if it is supported or False otherwise.
@@ -206,7 +208,7 @@ public abstract class JSoundSystem {
 	/**********************************************************************************************
 	 * 3D sound simulation code beyond here
 	 *********************************************************************************************/
-	
+
 	/**
 	 * Works like the createSound( File soundFile ) except that it will return a JSound3D object. A JSound3D
 	 * will automatically simulate 3D positional audio for you. You need to set the sound source, listener source
@@ -223,7 +225,7 @@ public abstract class JSoundSystem {
 
 		return new JSound3D(createSoundThread(soundFile, true));
 	}
-	
+
 	/**
 	 * This sets or changes the position of the listener. This is only used by JSound3D
 	 * who use this to simulate 3D positional sounds. The default position is (0, 0)
@@ -233,7 +235,7 @@ public abstract class JSoundSystem {
 	public static void setListenerPosition ( Point2D.Float listenerPosition ) {
 		JSoundSystem.listenerPosition = listenerPosition;
 	}
-	
+
 	/**
 	 * This sets the maximum distance from where sounds can be heard using 3D sound simulation
 	 * The default value is 800. The distance cannot be set below 1 or an IllegalArgumentException
@@ -246,7 +248,7 @@ public abstract class JSoundSystem {
 		if( distance <= 1 ) throw new IllegalArgumentException("Distance cannot be less than 1");
 		maxDistance = distance;
 	}
-	
+
 	/**
 	 * This returns the current position of the listener. The default position is (0, 0)
 	 * @return listenerPosition
@@ -255,7 +257,7 @@ public abstract class JSoundSystem {
 	public static Point2D.Float getListenerPosition(){
 		return listenerPosition;
 	}
-	
+
 	/**
 	 * Returns the current max hearing distance. Default is 800.
 	 * @return
