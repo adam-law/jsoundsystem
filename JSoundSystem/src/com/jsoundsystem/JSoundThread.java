@@ -16,13 +16,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ************************************************************************/
 
-package JSoundSystem;
+package com.jsoundsystem;
 
 import java.awt.geom.Point2D;
-import java.io.File;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
-import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.DataLine;
 import javax.sound.sampled.FloatControl;
@@ -34,11 +34,12 @@ import javax.sound.sampled.UnsupportedAudioFileException;
 
 class JSoundThread extends Thread {
 
-	private final float DEFAULT_SAMPLE_RATE;
+	//Effect mixer modifiers. They are used in a bitmap so each much be a power of two
+	private static final int MIX_VOLUME =  1 << 0;
+	private static final int MIX_PANNING = 1 << 1;
+	private static final int MIX_SPEED =   1 << 2;
 
-	private File audioFile;
-	protected SourceDataLine audioChannel;
-	
+	//Thread sound effects
 	private boolean looping, paused, stopped;
 	private boolean killThread;
 	
@@ -51,29 +52,31 @@ class JSoundThread extends Thread {
 	private Point2D.Float source;
 	private float lastVolume;
 
-	//Effect mixer modifiers. They are used in a bitmap so each much be a power of two
-	private static final int MIX_VOLUME =  1 << 0;
-	private static final int MIX_PANNING = 1 << 1;
-	private static final int MIX_SPEED =   1 << 2;
+	//Playback data
+	private AudioFormat soundFormat;
+	private byte[] soundData;
+	protected SourceDataLine audioChannel;
 
+	
 	/**
 	 * Constructs a new SoundThread, should only be called by the SoundSystem
 	 * @throws IOException 
 	 * @throws UnsupportedAudioFileException 
 	 */
-	JSoundThread( String name, File file, boolean simulate3DSound ) throws UnsupportedAudioFileException, IOException {
+	JSoundThread( String name, byte[] data, AudioFormat format, boolean simulate3DSound ) throws UnsupportedAudioFileException, IOException {
 		super(name);
 		setPriority( Thread.MIN_PRIORITY );		//Sounds have low priority
 		setDaemon(true);						//And run independently
-
-		this.audioFile = file;
-		DEFAULT_SAMPLE_RATE = AudioSystem.getAudioFileFormat( audioFile ).getFormat().getSampleRate();
-		simulate3DEffect = simulate3DSound;
 		
 		//Set default values
 		volume = 1.00f;
 		speed = 1.00f;
 		panning = 0.00f;
+		
+		//Get the audio format for this sound
+		soundFormat = format;
+		soundData = data;
+		simulate3DEffect = simulate3DSound;
 	}
 
 	protected void setLooped( boolean looping ){
@@ -106,25 +109,28 @@ class JSoundThread extends Thread {
 			//Keep data ready until we are disposed of
 			while( !killThread ){
 				
+				//Open and reserve a sound channel
+				DataLine.Info info = new DataLine.Info(SourceDataLine.class, soundFormat);
+				audioChannel = (SourceDataLine) AudioSystem.getLine(info);
+				audioChannel.open( soundFormat );
+				JSoundSystem.channelsPlaying++;
+				
+				ByteArrayInputStream stream = new ByteArrayInputStream(soundData);
+				stream.mark(stream.available());
+
 				//This might be do once or in infinity, depending on the loop variable
 				do{
-					//Try to open a new AudioLine to the sound, this is so that the stream position is reset
-					//because not all sound streams support mark() and reset()
-					AudioInputStream audioStream = JSoundSystem.getAudioStream(audioFile);
-					DataLine.Info info = new DataLine.Info(SourceDataLine.class, audioStream.getFormat(), ((int) audioStream.getFrameLength() * audioStream.getFormat().getFrameSize()));
-					audioChannel = (SourceDataLine) AudioSystem.getLine(info);
-					audioChannel.open( audioStream.getFormat() );
-					
+
 					//begin playing
-					JSoundSystem.channelsPlaying++;
-					audioChannel.start();		
+					stream.reset();
+					audioChannel.start();
 
 					//Apply various sound effects
 					mixSoundEffects( audioChannel, MIX_PANNING | MIX_VOLUME | MIX_SPEED );
 
 					//This actually plays the sound
 					int len = 0;					
-					int bytesPerFrame = audioStream.getFormat().getFrameSize();
+					int bytesPerFrame = soundFormat.getFrameSize();
 
 					// some audio formats may have unspecified frame size
 					// in that case we may read any amount of bytes
@@ -133,12 +139,13 @@ class JSoundThread extends Thread {
 					// Set an arbitrary buffer size of 1024 frames.
 					int numBytes = 1024 * bytesPerFrame; 
 					byte[] audioBytes = new byte[numBytes];
-
+					
 					//Keep playing as long as there is data left and sound has not been stopped
-					while ( !stopped && (len = audioStream.read(audioBytes) ) != -1 ) {
+					while ( !stopped && (len = stream.read(audioBytes) ) != -1 ) {
 						//Pause until we are told to continue
 						if( paused ) sleepThread();
 						
+						//Update 3D sound effects
 						if( simulate3DEffect ) update3DSound();
 
 						audioChannel.write(audioBytes, 0, len);					
@@ -149,12 +156,13 @@ class JSoundThread extends Thread {
 
 					//Release resources
 					audioChannel.stop();
-					audioChannel.close();
-					audioChannel = null;
-					JSoundSystem.channelsPlaying--;
-					audioStream.close();
+					stream.close();
 				}
 				while( looping && !stopped );
+
+				audioChannel.close();
+				audioChannel = null;
+				JSoundSystem.channelsPlaying--;
 
 				//Pause until further notice
 				sleepThread();
@@ -235,7 +243,7 @@ class JSoundThread extends Thread {
 		//Adjust sound speed
 		if( (effects & MIX_SPEED) != 0 && line.isControlSupported(FloatControl.Type.SAMPLE_RATE) ) {
 			FloatControl gainControl = (FloatControl)line.getControl(FloatControl.Type.SAMPLE_RATE);
-			float sampleRate = DEFAULT_SAMPLE_RATE * speed;
+			float sampleRate = soundFormat.getFrameRate() * speed;
 			sampleRate = Math.max(gainControl.getMinimum(), Math.min(sampleRate, gainControl.getMaximum()));
 			gainControl.setValue(sampleRate);
 		}
