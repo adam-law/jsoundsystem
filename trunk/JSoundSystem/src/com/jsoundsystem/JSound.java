@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ************************************************************************/
 
-package JSoundSystem;
+package com.jsoundsystem;
 
 import java.io.File;
 import java.io.IOException;
@@ -53,7 +53,7 @@ public class JSound {
 		if( !JSoundSystem.soundIsSupported(soundFile) ) 
 			throw new UnsupportedAudioFileException("Audio file not supported: " + soundFile.getAbsolutePath());
 
-		soundThread = new JSoundThread( soundFile.getName(), soundFile, false );
+		soundThread = JSoundSystem.createSoundThread(soundFile, false);
 	}
 	
 	/**
@@ -63,13 +63,7 @@ public class JSound {
 	 * @throws IOException If the file could not be read
 	 */
 	public JSound( String soundFile ) throws UnsupportedAudioFileException, IOException{
-		File file = new File(soundFile);
-		
-		//Make sure the file is actually a sound
-		if( !JSoundSystem.soundIsSupported(file) ) 
-			throw new UnsupportedAudioFileException("Audio file not supported: " + file.getAbsolutePath());
-
-		soundThread = new JSoundThread( file.getName(), file, false );
+		soundThread = JSoundSystem.createSoundThread( new File(soundFile), false);
 	}
 		
 	/**

@@ -16,10 +16,11 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ************************************************************************/
 
-package JSoundSystem;
+package com.jsoundsystem;
 
 import java.awt.geom.Point2D;
 import java.io.BufferedInputStream;
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -32,7 +33,7 @@ import javax.sound.sampled.UnsupportedAudioFileException;
 
 /**
  * The main overlay API to create JSounds among other things.
- * Current supported sounds are OGG, WAV, AIFF, AU and MP3
+ * Current supported sounds are OGG, WAV, AIFF, FLAC, AU and MP3
  * @author Johan Jansen
  *
  */
@@ -67,11 +68,8 @@ public abstract class JSoundSystem {
 	public static JSound createSound( File soundFile ) throws UnsupportedAudioFileException, IOException {
 		//Make sure the file is actually a sound
 		if( !soundIsSupported(soundFile) ) throw new UnsupportedAudioFileException("Audio file not supported: " + soundFile.getAbsolutePath());
-			
-		//Create a new thread for this sound to be played within
-		JSoundThread thread = new JSoundThread( soundFile.getName(), soundFile, false );
 
-		return new JSound(thread);
+		return new JSound(createSoundThread(soundFile, false));
 	}
 	
 	/**
@@ -115,15 +113,22 @@ public abstract class JSoundSystem {
 	public static boolean hasFreeChannels(){
 		return channelsPlaying <= maxChannels;
 	}
+		
 	
 	/**
-	 * Turns a File into a ready formated and decoded AudioInputStream that the JSoundSystem API can play
-	 * @param file the File to open
-	 * @throws UnsupportedAudioFileException If the specified audio file is not supported by the API.
-	 * @throws IOException If the specified file could not be read.
+	 * This function decodes and loads sound data into memory stored in a JSoundThread ready to be played
+	 * @param file
+	 * @param simulate3DSound
+	 * @return
+	 * @throws UnsupportedAudioFileException
+	 * @throws IOException
 	 */
-	public static AudioInputStream getAudioStream(File file) throws UnsupportedAudioFileException, IOException {
+	static JSoundThread createSoundThread( File file, boolean simulate3DSound ) throws UnsupportedAudioFileException, IOException {
 		
+		//Make sure the file is actually a sound first
+		if( !JSoundSystem.soundIsSupported(file) ) 
+			throw new UnsupportedAudioFileException("Audio file not supported: " + file.getAbsolutePath());
+
 		//Try to open a stream to it, we use BufferedInputStream which works with JAR files
 		BufferedInputStream in = new BufferedInputStream( new FileInputStream(file) );
 		AudioInputStream rawstream = AudioSystem.getAudioInputStream(in);
@@ -168,8 +173,20 @@ public abstract class JSoundSystem {
                 decodedFormat.isBigEndian());			
 		}*/
 		
-        //Get AudioInputStream that will be decoded by underlying SPI using the specified format
-        return AudioSystem.getAudioInputStream(decodedFormat, rawstream);
+        //Decode the sound by using the underlying SPI with the specified format
+		AudioInputStream audioStream = AudioSystem.getAudioInputStream(decodedFormat, rawstream);
+		
+		int length = (int)audioStream.getFrameLength() * decodedFormat.getFrameSize();
+		if(length < 0) throw new IOException("Could not do audio file because of negative array size");
+		
+        // read the entire stream and load it into memory
+		byte[] samples = new byte[length];
+        DataInputStream is = new DataInputStream(audioStream);
+        is.readFully(samples);
+        is.close();
+
+        //All done!
+        return new JSoundThread( file.getName(), samples, audioStream.getFormat(), simulate3DSound );
 	}
 	
 	/**
@@ -204,10 +221,7 @@ public abstract class JSoundSystem {
 		//Make sure the file is actually a sound
 		if( !soundIsSupported(soundFile) ) throw new UnsupportedAudioFileException("Audio file not supported: " + soundFile.getAbsolutePath());
 
-		//Create a new thread for this sound to be played within
-		JSoundThread thread = new JSoundThread( soundFile.getName(), soundFile, true );
-
-		return new JSound3D(thread);
+		return new JSound3D(createSoundThread(soundFile, true));
 	}
 	
 	/**

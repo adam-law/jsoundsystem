@@ -1,4 +1,4 @@
-package JSoundSystem;
+package com.jsoundsystem;
 
 import java.awt.geom.Point2D;
 import java.io.File;
@@ -34,7 +34,7 @@ public class JSound3D extends JSound {
 	 * @throws IOException If the file could not be read
 	 */
 	public JSound3D( File soundFile ) throws UnsupportedAudioFileException, IOException{
-		super( new JSoundThread( soundFile.getName(), soundFile, true ) );
+		super( JSoundSystem.createSoundThread(soundFile, true) );
 		soundThread.setSourcePosition( new Point2D.Float() );
 		
 		//Make sure the file is actually a sound
