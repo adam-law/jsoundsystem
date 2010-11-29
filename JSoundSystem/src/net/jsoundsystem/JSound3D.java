@@ -1,4 +1,4 @@
-package com.jsoundsystem;
+package net.jsoundsystem;
 
 import java.awt.geom.Point2D;
 import java.io.File;
