@@ -21,6 +21,7 @@ package net.jsoundsystem;
 import java.io.File;
 import java.io.IOException;
 
+import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.UnsupportedAudioFileException;
 
 /**
@@ -146,5 +147,21 @@ public class JSound {
 	 */
 	public void dispose(){
 		soundThread.dispose();
+	}
+	
+	/**
+	 * Returns information about the format of this specific JSound such as frequency, mono or stereo, etc.
+	 * @return And AudioFormat object containing various information about this sound
+	 */
+	public AudioFormat getSoundFormat(){
+		return soundThread.getAudioFormat();
+	}
+	
+	/**
+	 * Makes an exact copy of this JSound object, also cloning any sound effect modifiers such as volume, speed
+	 * looping, etc. 3D sound properties will also be cloned.
+	 */
+	public JSound clone() {
+		return new JSound(soundThread.clone());
 	}
 }
