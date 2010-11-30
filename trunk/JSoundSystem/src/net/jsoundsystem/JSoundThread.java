@@ -72,6 +72,7 @@ class JSoundThread extends Thread {
 		volume = 1.00f;
 		speed = 1.00f;
 		panning = 0.00f;
+		source = new Point2D.Float();
 		
 		//Get the audio format for this sound
 		soundFormat = format;
@@ -301,5 +302,33 @@ class JSoundThread extends Thread {
 
 	public boolean isPaused() {
 		return paused;
+	}
+	
+	/**
+	 * This function makes an exact copy of this JSoundThread, also cloning the sound data, format, etc.
+	 */
+	public JSoundThread clone() {
+		JSoundThread copy;
+		
+		//Try to clone the actual thread
+		try {
+			copy = new JSoundThread( getName(), soundData, soundFormat, simulate3DEffect);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return null;
+		}
+		
+		//Copy attributes
+		copy.volume = this.volume;
+		copy.looping = this.looping;
+		copy.speed = this.speed;
+		copy.source = (Point2D.Float) source.clone();
+		
+		//Finished cloning
+		return copy;
+	}
+	
+	public AudioFormat getAudioFormat() {
+		return soundFormat;
 	}
 }
