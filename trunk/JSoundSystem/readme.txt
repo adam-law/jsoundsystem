@@ -37,8 +37,8 @@ hearing distance. Setting the position of the listener usually only needs to be 
 who is the listener.
 
 	//Setup positions of the listener and source
-	Point2D.Float listenerPosition = new Point2D.Float( 400, 300 );
-	Point2D.Float sourcePosition = new Point2D.Float( 200, 150 );
+	Vector3f listenerPosition = new Vector3f( 400, 300, 0 ); 		//X, Y, Z positions for the listener
+	Vector3f sourcePosition = new Vector3f( 200, 150, 0 );			//X, Y, Z positions for the source
 
 	//Initialize the listener, this only needs to be done once
 	JSoundSystem.setMaxDistance( 800 );
@@ -104,7 +104,7 @@ Changelog
 - NEW FEATURE: Added support for changing sound volume, speed and panning. This works even while 
   the sound is playing
 - UPDATE: Made it even simpler to create JSound and JSound3D objects
-- UPDATE: The MP3 decoder is now shipped seperately from JSoundSystem so that you can use JSoundSystem
+- UPDATE: The MP3 decoder is now shipped separately from JSoundSystem so that you can use JSoundSystem
   without requiring the MP3 decoder which is not under a free license
 - UPDATE: Added more documentation
 - BUGFIX: Fixed delay when pausing or stopping sounds

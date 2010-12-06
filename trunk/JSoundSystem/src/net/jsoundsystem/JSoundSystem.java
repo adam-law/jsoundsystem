@@ -207,6 +207,8 @@ public abstract class JSoundSystem {
 	 * @throws IOException If the File cannot be read
 	 */
 	public static boolean soundIsSupported( File soundFile ) throws IOException {
+		if( soundFile == null ) return false;
+		
 		try {
 			AudioSystem.getAudioFileFormat( soundFile );
 		} catch (UnsupportedAudioFileException e) {
