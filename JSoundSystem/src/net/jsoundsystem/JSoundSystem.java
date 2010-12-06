@@ -18,7 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package net.jsoundsystem;
 
-import java.awt.geom.Point2D;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -30,10 +29,13 @@ import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.UnsupportedAudioFileException;
 
+import net.jsoundsystem.utils.Vector3f;
+
+
 
 /**
  * The main overlay API to create JSounds among other things.
- * Current supported sounds are OGG, WAV, AIFF, FLAC, AU and MP3
+ * Current supported sounds are OGG, WAV, AIFF, SND, AIFC, FLAC, AU and MP3
  * @author Johan Jansen
  *
  */
@@ -45,7 +47,7 @@ public abstract class JSoundSystem {
 	private static int maxChannels = 32;
 
 	//3D sound effects
-	private static Point2D.Float listenerPosition = new Point2D.Float();
+	private static Vector3f listenerPosition = new Vector3f();
 	protected static float maxDistance = 800;
 
 	/**
@@ -66,10 +68,7 @@ public abstract class JSoundSystem {
 	 * @see JSound
 	 */
 	public static JSound createSound( File soundFile ) throws UnsupportedAudioFileException, IOException {
-		//Make sure the file is actually a sound
-		if( !soundIsSupported(soundFile) ) throw new UnsupportedAudioFileException("Audio file not supported: " + soundFile.getAbsolutePath());
-
-		return new JSound(createSoundThread(soundFile, false));
+		return new JSound(soundFile);
 	}
 
 	/**
@@ -83,7 +82,7 @@ public abstract class JSoundSystem {
 	 * @see JSound
 	 */
 	public static JSound createSound( String soundFile ) throws UnsupportedAudioFileException, IOException{
-		return createSound( new File(soundFile) );
+		return new JSound(soundFile);
 	}
 
 	/**
@@ -102,7 +101,7 @@ public abstract class JSoundSystem {
 		//Dont close channels that are in use
 		if( amount < channelsPlaying ) 
 			throw new IllegalArgumentException("Cannot set channels to " + amount + " because " + channelsPlaying + " is already in use.");
-		
+
 		//All ok
 		maxChannels = amount;
 	}
@@ -123,8 +122,33 @@ public abstract class JSoundSystem {
 	 * @throws UnsupportedAudioFileException
 	 * @throws IOException
 	 */
-	static JSoundThread createSoundThread( File file, boolean simulate3DSound ) throws UnsupportedAudioFileException, IOException {
+	static AudioThread createSoundThread( File file, boolean loadToMemory ) throws UnsupportedAudioFileException, IOException {
+		AudioInputStream audioStream = JSoundSystem.getAudioInputStream( file );
+		byte[] memoryData = null;
 
+		if( loadToMemory ){
+			// copy the AudioInputStream to a byte array which we load into memory
+			ByteArrayOutputStream bos = new ByteArrayOutputStream();
+			byte[] buffer = new byte[4096];
+			int tempBytesRead = 0;
+			while ((tempBytesRead = audioStream.read(buffer, 0, buffer.length)) != -1) {
+				bos.write(buffer, 0, tempBytesRead);
+			}
+			memoryData = bos.toByteArray();
+		}
+
+		//All done!
+		return new AudioThread( file, memoryData, audioStream.getFormat() );
+	}
+
+	/**
+	 * Opens a file turning it into a decoded AudioInputStream
+	 * @param file Which file to open
+	 * @return The AudioInputStream ready to be used
+	 * @throws UnsupportedAudioFileException
+	 * @throws IOException
+	 */
+	static AudioInputStream getAudioInputStream( File file ) throws UnsupportedAudioFileException, IOException{
 		//Make sure the file is actually a sound first
 		if( !JSoundSystem.soundIsSupported(file) ) 
 			throw new UnsupportedAudioFileException("Audio file not supported: " + file.getAbsolutePath());
@@ -174,21 +198,7 @@ public abstract class JSoundSystem {
 		}*/
 
 		//Decode the sound by using the underlying SPI with the specified format
-		AudioInputStream audioStream = AudioSystem.getAudioInputStream(decodedFormat, rawstream);
-
-		// copy the AudioInputStream to a byte array which we load into memory
-		ByteArrayOutputStream bos = new ByteArrayOutputStream();
-		byte[] data = new byte[4096];
-		int tempBytesRead = 0;
-		int byteCounter = 0;
-		while ((tempBytesRead = audioStream.read(data, 0, data.length)) != -1) {
-			bos.write(data, 0, tempBytesRead);
-			byteCounter += tempBytesRead;
-		}
-		bos.close();
-
-		//All done!
-		return new JSoundThread( file.getName(), bos.toByteArray(), audioStream.getFormat(), simulate3DSound );
+		return AudioSystem.getAudioInputStream( decodedFormat, rawstream );
 	}
 
 	/**
@@ -223,16 +233,16 @@ public abstract class JSoundSystem {
 		//Make sure the file is actually a sound
 		if( !soundIsSupported(soundFile) ) throw new UnsupportedAudioFileException("Audio file not supported: " + soundFile.getAbsolutePath());
 
-		return new JSound3D(createSoundThread(soundFile, true));
+		return new JSound3D(soundFile);
 	}
 
 	/**
 	 * This sets or changes the position of the listener. This is only used by JSound3D
-	 * who use this to simulate 3D positional sounds. The default position is (0, 0)
-	 * @param listenerPosition A 2 dimensional x y floating point coordinate
+	 * who use this to simulate 3D positional sounds. The default position is (0, 0, 0)
+	 * @param listenerPosition A 3 dimensional x y z floating point coordinate
 	 * @see JSound3D
 	 */
-	public static void setListenerPosition ( Point2D.Float listenerPosition ) {
+	public static void setListenerPosition ( Vector3f listenerPosition ) {
 		JSoundSystem.listenerPosition = listenerPosition;
 	}
 
@@ -254,7 +264,7 @@ public abstract class JSoundSystem {
 	 * @return listenerPosition
 	 * @see JSound3D
 	 */
-	public static Point2D.Float getListenerPosition(){
+	public static Vector3f getListenerPosition(){
 		return listenerPosition;
 	}
 

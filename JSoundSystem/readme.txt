@@ -1,7 +1,7 @@
 JSoundSystem quick install guide
 -----------------------------------
 
-Simply add JSoundSystem-1.1.0.jar (or any later version) to your project, right click it 
+Simply add JSoundSystem-1.1.2.jar (or any later version) to your project, right click it 
 and add it to build path. Now you can use JSound objects to play sounds.
 
 	JSound mySound = new JSound( "mysound.wav" );
@@ -63,12 +63,14 @@ Other
 -----------------------------------
 
 JSoundSystem currently supports the following audio formats:
-- WAV
+- WAVE
 - MP3 (note you have to copy mp3spi1.9.5.jar for MP3 support)
 - OGG
 - FLAC
 - AIFF
 - AU
+- AIFC
+- SND
 
 JSoundSystem is licensed under the GPL v3.0 and implements some SPI libraries 
 from JavaZoom to decode OGG and MP3 sound files.
@@ -85,10 +87,17 @@ Contact me at: zefzsoftwares@hotmail.com for suggestions or questions about JSou
 Changelog
 -------------------------------------
 
-1.1.1 (??.??.??)
+1.2.0 (06.12.10)
+- NEW FEATURE: Added new JMusic object that streams audio instead of loading them into memory. This is useful
+  for large sound files like music that take time to load into memory.
+- NEW FEATURE: Added new clone() and getAudioFormat() methods for JSound objects. The clone() method can
+   be used to duplicate and play the same sound in different threads while only loading the sound into 
+   memory once.
+- UPDATE: JSoundSystem now properly uses actual 3d vectors for positions instead of 2d.
 - UPDATE: Renamed the package to accommodate with the Java standard convention.
 - UPDATE: Large optimizations by loading whole sounds into memory instead of keeping open data streams.
 - UPDATE: Various other optimizations.
+- BUGFIX: Fixed possible null pointer exception when using JSound3D
 
 1.1.0 (06.11.10)
 - NEW FEATURE: Added basic support for 3D sound simulation using the JSound3D object
