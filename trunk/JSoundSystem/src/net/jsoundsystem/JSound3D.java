@@ -1,10 +1,29 @@
+/******************************************************************************
+JSoundSystem is a simple and easy sound API to use sound in your Java applications.
+Copyright (C) 2010  Johan Jansen
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ ************************************************************************/
+
 package net.jsoundsystem;
 
-import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 
 import javax.sound.sampled.UnsupportedAudioFileException;
+
+import net.jsoundsystem.utils.Vector3f;
 
 /**
  * An extension of the JSound class that simulates a 3D sound effect. 3D sounds have a
@@ -22,11 +41,6 @@ import javax.sound.sampled.UnsupportedAudioFileException;
  */
 public class JSound3D extends JSound {
 	
-	JSound3D(JSoundThread thread ) {
-		super(thread);
-		thread.setSourcePosition( new Point2D.Float() );
-	}
-	
 	/**
 	 * A constructor for the JSound3D object. This is same as calling JSoundSystem.create3DSound( File soundFile )
 	 * @param soundFile The file you want to play as an audio file.
@@ -34,19 +48,15 @@ public class JSound3D extends JSound {
 	 * @throws IOException If the file could not be read
 	 */
 	public JSound3D( File soundFile ) throws UnsupportedAudioFileException, IOException{
-		super( JSoundSystem.createSoundThread(soundFile, true) );
-		soundThread.setSourcePosition( new Point2D.Float() );
-		
-		//Make sure the file is actually a sound
-		if( !JSoundSystem.soundIsSupported(soundFile) ) 
-			throw new UnsupportedAudioFileException("Audio file not supported: " + soundFile.getAbsolutePath());
+		super( soundFile );
+		soundThread.enableSpatializedSound();
 	}
 	
 	/**
 	 * This sets the position for this sound
-	 * @param source A Point2D.Float position
+	 * @param source A Vector3f position
 	 */
-	public void setSourcePosition( Point2D.Float source ) {
+	public void setSourcePosition( Vector3f source ) {
 		soundThread.setSourcePosition( source );
 	}
 }

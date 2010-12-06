@@ -18,9 +18,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package net.jsoundsystem;
 
-import java.awt.geom.Point2D;
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
@@ -31,13 +32,15 @@ import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
 import javax.sound.sampled.UnsupportedAudioFileException;
 
+import net.jsoundsystem.utils.Vector3f;
 
-class JSoundThread extends Thread {
+
+class AudioThread extends Thread {
 
 	//Effect mixer modifiers. They are used in a bitmap so each much be a power of two
-	private static final int MIX_VOLUME =  1 << 0;
-	private static final int MIX_PANNING = 1 << 1;
-	private static final int MIX_SPEED =   1 << 2;
+	private static final int MIX_VOLUME 	=  	1 << 0;
+	private static final int MIX_PANNING 	= 	1 << 1;
+	private static final int MIX_SPEED 		=   1 << 2;
 
 	//Thread sound effects
 	private boolean looping, paused, stopped;
@@ -49,13 +52,14 @@ class JSoundThread extends Thread {
 	
 	//3D sound simulation
 	private boolean simulate3DEffect;
-	private Point2D.Float source;
+	private Vector3f source;
 	private float lastVolume;
 
 	//Playback data
 	private AudioFormat soundFormat;
 	private byte[] soundData;
-	protected SourceDataLine audioChannel;
+	private File filePath;
+	private SourceDataLine audioChannel;
 
 	
 	/**
@@ -63,8 +67,8 @@ class JSoundThread extends Thread {
 	 * @throws IOException 
 	 * @throws UnsupportedAudioFileException 
 	 */
-	JSoundThread( String name, byte[] data, AudioFormat format, boolean simulate3DSound ) throws UnsupportedAudioFileException, IOException {
-		super(name);
+	AudioThread( File path, byte[] data, AudioFormat format ) throws UnsupportedAudioFileException, IOException {
+		super( path.getName() );
 		setPriority( Thread.MIN_PRIORITY );		//Sounds have low priority
 		setDaemon(true);						//And run independently
 		
@@ -72,12 +76,15 @@ class JSoundThread extends Thread {
 		volume = 1.00f;
 		speed = 1.00f;
 		panning = 0.00f;
-		source = new Point2D.Float();
 		
 		//Get the audio format for this sound
 		soundFormat = format;
 		soundData = data;
-		simulate3DEffect = simulate3DSound;
+	}
+	
+	public void enableSpatializedSound(){
+		source = new Vector3f();
+		simulate3DEffect = true;
 	}
 
 	protected void setLooped( boolean looping ){
@@ -116,14 +123,29 @@ class JSoundThread extends Thread {
 				audioChannel.open( soundFormat );
 				JSoundSystem.channelsPlaying++;
 				
-				ByteArrayInputStream stream = new ByteArrayInputStream(soundData);
-				stream.mark(stream.available());
+				//Ready the sound stream
+				InputStream stream = null;
+				
+				//It's a sound loaded into memory
+				if( soundData != null ) {
+					stream = new ByteArrayInputStream(soundData);
+					
+					//Use mark if supported
+					if( stream.markSupported() ) stream.mark( stream.available() );
+				}
 
 				//This might be do once or in infinity, depending on the loop variable
 				do{
+					//Reset sound and reopen a sound stream if needed
+					if( stream != null && stream.markSupported() ) stream.reset();
+					else {
+						//Need to reopen the sound to reset it
+						if( stream != null) stream.close();
+						stream = JSoundSystem.getAudioInputStream(filePath);
+						if( stream.markSupported() ) stream.mark( stream.available() );
+					}
 
 					//begin playing
-					stream.reset();
 					audioChannel.start();
 
 					//Apply various sound effects
@@ -143,6 +165,7 @@ class JSoundThread extends Thread {
 					
 					//Keep playing as long as there is data left and sound has not been stopped
 					while ( !stopped && (len = stream.read(audioBytes) ) != -1 ) {
+						
 						//Pause until we are told to continue
 						if( paused ) sleepThread();
 						
@@ -236,7 +259,7 @@ class JSoundThread extends Thread {
 	 * @param line Which audio line to update
 	 * @param effects A bitmask with the effects to update
 	 */
-	private void mixSoundEffects(Line line, int effects ) {
+	private void mixSoundEffects( Line line, int effects ) {
 		
 		//No need to mix something that isn't playing
 		if( audioChannel == null ) return;
@@ -280,8 +303,8 @@ class JSoundThread extends Thread {
 	}
 
 	private void update3DSound() {
-		Point2D.Float listenerPosition = JSoundSystem.getListenerPosition();
-		float distance = (float) listenerPosition.distance(source);
+		Vector3f listenerPosition = JSoundSystem.getListenerPosition();
+		float distance = listenerPosition.getDistance(source);
 		
         //Calculate how loud the sound is
 		float newVolume = (JSoundSystem.maxDistance - distance) / JSoundSystem.maxDistance;
@@ -291,12 +314,12 @@ class JSoundThread extends Thread {
         float newPanning = (2.00f/JSoundSystem.maxDistance) * -(listenerPosition.x - source.x);
         
         //Now actually update the effects
-        setVolume(newVolume + lastVolume / 2);
+        setVolume( (newVolume + lastVolume) / 2);
         setPanning( newPanning );
         lastVolume = newVolume;
 	}
 	
-	protected void setSourcePosition( Point2D.Float pos ){
+	protected void setSourcePosition( Vector3f pos ){
 		source = pos;
 	}
 
@@ -307,12 +330,12 @@ class JSoundThread extends Thread {
 	/**
 	 * This function makes an exact copy of this JSoundThread, also cloning the sound data, format, etc.
 	 */
-	public JSoundThread clone() {
-		JSoundThread copy;
+	public AudioThread clone() {
+		AudioThread copy;
 		
 		//Try to clone the actual thread
 		try {
-			copy = new JSoundThread( getName(), soundData, soundFormat, simulate3DEffect);
+			copy = new AudioThread( filePath, soundData, soundFormat );
 		} catch (Exception e) {
 			e.printStackTrace();
 			return null;
@@ -322,7 +345,7 @@ class JSoundThread extends Thread {
 		copy.volume = this.volume;
 		copy.looping = this.looping;
 		copy.speed = this.speed;
-		copy.source = (Point2D.Float) source.clone();
+		copy.source = new Vector3f(source);
 		
 		//Finished cloning
 		return copy;
@@ -330,5 +353,20 @@ class JSoundThread extends Thread {
 	
 	public AudioFormat getAudioFormat() {
 		return soundFormat;
+	}
+	
+	
+	public void invertSoundData(){
+		//Simply change reference to the byte array instead of actually modifying
+		//the array itself. Others might be using the old non-inversed array through
+		//the clone() method. Slower, but it's safe.
+		
+		byte[] inverseData = new byte[soundData.length];
+		
+		for( int i = 0; i < soundData.length; i++ ){
+			inverseData[soundData.length-i-1] = soundData[i];
+		}
+		
+		soundData = inverseData;
 	}
 }

@@ -21,8 +21,8 @@ package net.jsoundsystem;
 import java.io.File;
 import java.io.IOException;
 
-import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.UnsupportedAudioFileException;
+
 
 /**
  * A sound container class to make using sound effects very easy. To construct a 
@@ -30,31 +30,20 @@ import javax.sound.sampled.UnsupportedAudioFileException;
  * @author Johan Jansen
  *
  */
-public class JSound {
-	/**
-	 * This points to the actual sound where the sound is played in a different thread
-	 */
-	protected final JSoundThread soundThread;
+public class JSound extends Audio {
 
-	/**
-	 * Hidden constructor only used by the SoundSystem
-	 */
-	JSound( JSoundThread thread ){
-		soundThread = thread;
-	}
-	
 	/**
 	 * A constructor for the JSound object. This is same as calling JSoundSystem.createSound( File soundFile )
 	 * @param soundFile The file you want to play as an audio file.
 	 * @throws UnsupportedAudioFileException If the API cannot convert the file into an audio stream
 	 * @throws IOException If the file could not be read
 	 */
-	public JSound( File soundFile ) throws UnsupportedAudioFileException, IOException{
-		//Make sure the file is actually a sound
-		if( !JSoundSystem.soundIsSupported(soundFile) ) 
-			throw new UnsupportedAudioFileException("Audio file not supported: " + soundFile.getAbsolutePath());
-
-		soundThread = JSoundSystem.createSoundThread(soundFile, false);
+	public JSound( File soundFile ) throws UnsupportedAudioFileException, IOException {
+		super( JSoundSystem.createSoundThread(soundFile, true) );
+	}
+	
+	private JSound( AudioThread thread ){
+		super(thread);
 	}
 	
 	/**
@@ -64,104 +53,24 @@ public class JSound {
 	 * @throws IOException If the file could not be read
 	 */
 	public JSound( String soundFile ) throws UnsupportedAudioFileException, IOException{
-		soundThread = JSoundSystem.createSoundThread( new File(soundFile), false);
-	}
-		
-	/**
-	 * This method starts playing a sound that is either stopped or paused.
-	 * A sound that hasn't begun playing is stopped. This function will do
-	 * nothing if there are no free channels.
-	 */
-	public void play() {
-
-		//No free channels to start a new sound
-		if( !JSoundSystem.hasFreeChannels() && !soundThread.isPaused() ) return;
-
-		soundThread.play();
-	}
-	
-	/**
-	 * Stops playing a sound and resets its position
-	 */
-	public void stop(){
-		soundThread.stopPlaying();
-	}
-	
-	/**
-	 * Stops playing a sound, but will resume at the same position once
-	 * play() is called again.
-	 */
-	public void pause(){
-		soundThread.pause();
-	}
-	
-	/**
-	 * Sets if this sound is supposed to be looping or not. A looping sound
-	 * will play in infinity until it is stopped looping or a stop() is called.
-	 * @param looping
-	 */
-	public void setLoop( boolean looping ){
-		soundThread.setLooped( looping );
-	}
-	
-	/**
-	 * Returns True if this sound is currently playing
-	 */
-	public boolean isPlaying(){
-		return soundThread.isPlaying();
-	}
-	
-	public String toString(){
-		return soundThread.getName();
-	}
-	
-	/**
-	 * Changes the volume of this sound. The number indicates how loud the sound
-	 * will be played (For example 0.10f is 10%, while 1.00f means 100% and 2.25f means 225%)
-	 * @param volume A number between 0.00f and 5.00f where 1.00f is default 
-	 */
-	public void setVolume( float volume ){
-		soundThread.setVolume( volume );
-	}
-	
-	/**
-	 * Changes how fast this sound is played by changing it's sample playback rate.
-	 * @param speed A non-negative float that describes how fast to play. 
-	 * 1.00f means 100% speed (default)
-	 */
-	public void setSpeed( float speed ){
-		soundThread.setSpeed( speed );
-	}
-	
-	/**
-	 * Sets if this sound is to be played on the left or right speaker.
-	 * @param panning A number between -1.00f (left) and 1.00f (right). 0.00f is the default (center)
-	 */
-	public void setPanning( float panning ) {
-		soundThread.setPanning( panning );
-	}
-	
-	/**
-	 * Disposes of this sound and frees all resources is uses. The JSound object cannot be used anymore 
-	 * after this is done.
-	 */
-	public void dispose(){
-		soundThread.dispose();
-	}
-	
-	/**
-	 * Returns information about the format of this specific JSound such as frequency, mono or stereo, etc.
-	 * @return And AudioFormat object containing various information about this sound
-	 */
-	public AudioFormat getSoundFormat(){
-		return soundThread.getAudioFormat();
+		this( new File( soundFile) );
 	}
 	
 	/**
 	 * Makes an exact copy of this JSound object, also cloning any sound effect modifiers such as volume, speed
-	 * looping, etc. 3D sound properties will also be cloned.
+	 * looping, etc. 3D sound properties will also be cloned. This sound can be played independently from the
+	 * original JSound from which this one is cloned from.
 	 */
 	public JSound clone() {
-		return new JSound(soundThread.clone());
+		return new JSound( soundThread.clone() );
 	}
+	
+	/**
+	 * This inverts the sound stream, playing the sound backwards. Calling this method twice will revert it to
+	 * it's original stream, so no actual data is modified (only reversed).
+	 */
+	//This function has been uncommented. Reversing data on encoded audio doesn't work very well
+	//public void reverse(){
+	//	soundThread.invertSoundData();
+	//}
 }
