@@ -69,6 +69,7 @@ class AudioThread extends Thread {
 	 */
 	AudioThread( File path, byte[] data, AudioFormat format ) throws UnsupportedAudioFileException, IOException {
 		super( path.getName() );
+		filePath = path;
 		setPriority( Thread.MIN_PRIORITY );		//Sounds have low priority
 		setDaemon(true);						//And run independently
 		
