@@ -35,4 +35,4 @@ The sound will now play at double speed with 25% less volume in an infinite loop
 	my3dSound.play();
 }}}
 
-The 3D emulation in the JSoundSystem currently uses Point2D.Float as the position for the source and listener. For 3D sounds to be automatically updated when either your listener or source moves, you need to make sure that any movement that is done is also done to listenerPosition and sourcePosition variables. You do not need to reset the positions each time you move if you have referenced the Point2D variable correctly..
+The 3D emulation in the JSoundSystem currently uses Vector3f as the position for the source and listener. For 3D sounds to be automatically updated when either your listener or source moves, you need to make sure that any movement that is done is also done to listenerPosition and sourcePosition variables. You do not need to reset the positions each time you move if you have referenced the Vector3f variable correctly..
