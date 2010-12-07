@@ -19,8 +19,9 @@ The sound will now play at double speed with 25% less volume in an infinite loop
 
 {{{
 	//Setup positions of the listener and source
-	Point2D.Float listenerPosition = new Point2D.Float( 400, 300 );
-	Point2D.Float sourcePosition = new Point2D.Float( 200, 150 );
+	//Setup positions of the listener and source
+	Vector3f listenerPosition = new Vector3f( 400, 300, 0 ); //X, Y, Z positions for the listener
+	Vector3f sourcePosition = new Vector3f( 200, 150, 0 );	//X, Y, Z positions for the source
 
 	//Initialize the listener, this only needs to be done once
 	JSoundSystem.setMaxDistance( 800 );
