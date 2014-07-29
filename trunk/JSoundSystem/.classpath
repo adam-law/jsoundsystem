@@ -4,9 +4,10 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
 	<classpathentry kind="lib" path="External Libraries/jl1.0.1.jar"/>
 	<classpathentry kind="lib" path="External Libraries/jogg-0.0.7.jar"/>
-	<classpathentry kind="lib" path="External Libraries/jorbis-0.0.15.jar"/>
+	<classpathentry kind="lib" path="External Libraries/jorbis-0.0.17.jar"/>
 	<classpathentry kind="lib" path="External Libraries/mp3spi1.9.5.jar"/>
-	<classpathentry kind="lib" path="External Libraries/tritonus_share.jar"/>
+	<classpathentry kind="lib" path="External Libraries/tritonus_share-0.3.6.jar"/>
+	<classpathentry kind="lib" path="External Libraries/tritonus_share-jorbis.jar"/>
 	<classpathentry kind="lib" path="External Libraries/vorbisspi1.0.3.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

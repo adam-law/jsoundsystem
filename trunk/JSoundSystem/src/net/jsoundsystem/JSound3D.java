@@ -61,6 +61,16 @@ public class JSound3D extends JSound {
 		super( soundFile );
 		soundThread.enableSpatializedSound();
 	}
+
+    /**
+     * A JSound3D constructor accepting a string instead of a File object
+     * @param fileName the path to the file to load
+     * @throws UnsupportedAudioFileException If the API cannot convert the file into an audio stream
+     * @throws IOException If the file could not be read
+     */
+    public JSound3D(String fileName) throws UnsupportedAudioFileException, IOException {
+        this(new File(fileName));
+    }
 	
 	/**
 	 * This sets the position for this sound
