@@ -87,6 +87,9 @@ Contact me at: zefzsoftwares@hotmail.com for suggestions or questions about JSou
 Changelog
 -------------------------------------
 
+1.3.0 (29.07.14)
+- UPDATE: Updated JOrbis Decoder from version 0.0.15 to 0.0.17.
+
 1.2.0 (06.12.10)
 - NEW FEATURE: Added new JMusic object that streams audio instead of loading them into memory. This is useful
   for large sound files like music that take time to load into memory.
@@ -97,7 +100,7 @@ Changelog
 - UPDATE: Renamed the package to accommodate with the Java standard convention.
 - UPDATE: Large optimizations by loading whole sounds into memory instead of keeping open data streams.
 - UPDATE: Various other optimizations.
-- BUGFIX: Fixed possible null pointer exception when using JSound3D
+- BUGFIX: Fixed possible null pointer exception when using JSound3D.
 
 1.1.0 (06.11.10)
 - NEW FEATURE: Added basic support for 3D sound simulation using the JSound3D object

@@ -127,7 +127,6 @@ public abstract class JSoundSystem {
 	/**
 	 * This function decodes and loads sound data into memory stored in a JSoundThread ready to be played
 	 * @param file
-	 * @param simulate3DSound
 	 * @return
 	 * @throws UnsupportedAudioFileException
 	 * @throws IOException
@@ -159,27 +158,33 @@ public abstract class JSoundSystem {
 	 * @throws IOException
 	 */
 	static AudioInputStream getAudioInputStream( File file ) throws UnsupportedAudioFileException, IOException{
-		//Make sure the file is actually a sound first
-		if( !JSoundSystem.soundIsSupported(file) ) 
-			throw new UnsupportedAudioFileException("Audio file not supported: " + file.getAbsolutePath());
 
-		//Try to open a stream to it, we use BufferedInputStream which works with JAR files
-		BufferedInputStream in = new BufferedInputStream( new FileInputStream(file) );
-		AudioInputStream rawstream = AudioSystem.getAudioInputStream(in);
+        //Try to open a stream to it, we use BufferedInputStream which works with JAR files
+        BufferedInputStream in = new BufferedInputStream( new FileInputStream(file) );
+
+        AudioInputStream rawstream = null;
+        try {
+            rawstream = AudioSystem.getAudioInputStream(file);
+        }
+        catch(UnsupportedAudioFileException ex) {
+            throw new UnsupportedAudioFileException("Audio file not supported: " + file.getAbsolutePath() + " (" + ex.getMessage() + ")");
+        }
+
+        //Now decode the stream
 		AudioFormat decodedFormat = rawstream.getFormat();
-
 		String fileName = file.getName().toLowerCase();
 
-		//Decode it if it is in OGG Vorbis format
-		if( fileName.endsWith(".ogg") ) {
-			decodedFormat = new AudioFormat(
-					AudioFormat.Encoding.PCM_SIGNED,
-					decodedFormat.getSampleRate(),
-					16,
-					2,
-					decodedFormat.getChannels() * 2,
-					decodedFormat.getSampleRate(),
-					false);
+        decodedFormat = new AudioFormat(
+                AudioFormat.Encoding.PCM_SIGNED,
+                decodedFormat.getSampleRate(),
+                16,
+                2,
+                decodedFormat.getChannels() * 2,
+                decodedFormat.getSampleRate(),
+                false);
+
+        //Decode it if it is in OGG Vorbis format
+		/*if( fileName.endsWith(".ogg") ) {
 		}
 
 		//Decode it if it is in MP3 format
@@ -194,17 +199,28 @@ public abstract class JSoundSystem {
 					false);
 		}
 
-		//Convert sound from Mono to Stereo so that we can adjust panning
-		/*else if(decodedFormat.getChannels() == 1 )
+        else if( fileName.endsWith(".flac") ) {
+            decodedFormat = new AudioFormat(
+                    AudioFormat.Encoding.PCM_SIGNED,
+                    decodedFormat.getSampleRate(),
+                    16,
+                    decodedFormat.getChannels(),
+                    decodedFormat.getChannels() * 2,
+                    decodedFormat.getSampleRate(),
+                    false);
+        }*/
+
+        //Convert sound from Mono to Stereo so that we can adjust panning
+		/*if(decodedFormat.getChannels() == 1 )
 		{
 	        decodedFormat = new AudioFormat(
-                decodedFormat.getEncoding(),
+                AudioFormat.Encoding.PCM_SIGNED,
                 decodedFormat.getSampleRate(),
-                decodedFormat.getSampleSizeInBits(),
+                16,
                 2,
-                decodedFormat.getFrameSize(),
-                decodedFormat.getFrameRate(),
-                decodedFormat.isBigEndian());			
+                decodedFormat.getChannels()*2,
+                decodedFormat.getSampleRate(),
+                false);
 		}*/
 
 		//Decode the sound by using the underlying SPI with the specified format
@@ -214,16 +230,18 @@ public abstract class JSoundSystem {
 	/**
 	 * Finds out if the specified File is supported as an AudioInputStream and if it can be used
 	 * as a JSound. Returns true if it is supported or False otherwise.
-	 * @throws IOException If the File cannot be read
 	 */
-	public static boolean soundIsSupported( File soundFile ) throws IOException {
+	public static boolean soundIsSupported( File soundFile ) {
 		if( soundFile == null ) return false;
 		
 		try {
 			AudioSystem.getAudioFileFormat( soundFile );
 		} catch (UnsupportedAudioFileException e) {
 			return false;
-		}
+		} catch(IOException ex) {
+            return false;
+        }
+
 		return true;
 	}
 
